@@ -43,18 +43,25 @@ class OrderFlowScanner:
     async def _find_btc_markets(self):
         """Busca mercados BTC ativos no Polymarket"""
         try:
-            # Busca mercados via Gamma API
+            # Tenta Gamma API primeiro
             params = {"active": "true", "closed": "false", "limit": 200}
+            print(f"[PolyScanner] Buscando mercados em {GAMMA_API}/markets...")
             async with self._session.get(
                 f"{GAMMA_API}/markets", params=params,
-                timeout=aiohttp.ClientTimeout(total=10)
+                timeout=aiohttp.ClientTimeout(total=15)
             ) as r:
+                print(f"[PolyScanner] Status: {r.status}")
                 if r.status != 200:
-                    print(f"[PolyScanner] Gamma API status: {r.status}")
+                    text = await r.text()
+                    print(f"[PolyScanner] Erro: {text[:200]}")
+                    # Tenta endpoint alternativo
+                    await self._find_btc_markets_clob()
                     return
                 data = await r.json()
 
+            print(f"[PolyScanner] Resposta: {type(data)} len={len(data) if isinstance(data, list) else 'dict'}")
             markets = data if isinstance(data, list) else data.get("markets", [])
+            print(f"[PolyScanner] Total mercados: {len(markets)}")
 
             # Filtra mercados BTC/crypto de curto prazo
             btc = []
@@ -189,6 +196,21 @@ class OrderFlowScanner:
 
         if self.on_large_order:
             await self.on_large_order(order)
+
+    async def _find_btc_markets_clob(self):
+        """Tenta buscar mercados diretamente via CLOB API"""
+        try:
+            print("[PolyScanner] Tentando CLOB API...")
+            async with self._session.get(
+                f"{CLOB_API}/markets",
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as r:
+                print(f"[PolyScanner] CLOB status: {r.status}")
+                if r.status == 200:
+                    data = await r.json()
+                    print(f"[PolyScanner] CLOB resposta: {str(data)[:200]}")
+        except Exception as e:
+            print(f"[PolyScanner] CLOB erro: {e}")
 
     async def _refresh_markets_loop(self):
         """Atualiza lista de mercados a cada 5 minutos"""
