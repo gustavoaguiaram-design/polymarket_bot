@@ -231,10 +231,11 @@ async def dashboard():
 </div>
 
 <script>
-const API = 'http://localhost:8001';
+const API = window.location.origin;
 
 function connectWS(){
-  const ws = new WebSocket('ws://localhost:8001/ws');
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(wsProto + '//' + window.location.host + '/ws');
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     if(d.type==='update'){
