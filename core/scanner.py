@@ -119,9 +119,7 @@ class OrderFlowScanner:
                             })
 
             # Ordena por volume e pega top 10
-print(f"[PolyScanner] Mercados encontrados antes do sort: {len(btc)}")
             btc.sort(key=lambda x: x["volume"], reverse=True)
-	    
             self.btc_markets = btc[:10]
             self.stats["markets_tracked"] = len(self.btc_markets)
 
