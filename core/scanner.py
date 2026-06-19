@@ -63,28 +63,60 @@ class OrderFlowScanner:
             markets = data if isinstance(data, list) else data.get("markets", [])
             print(f"[PolyScanner] Total mercados: {len(markets)}")
 
-            # Filtra mercados BTC/crypto de curto prazo
+            # Filtra mercados crypto com volume relevante
             btc = []
+            crypto_keywords = [
+                "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
+                "crypto", "price", "above", "below", "higher", "lower",
+                "xrp", "bnb", "doge", "matic", "avax", "ada"
+            ]
             for m in markets:
                 q = m.get("question", "").lower()
                 tags = [t.get("slug","") for t in m.get("tags", [])]
-                is_crypto = "crypto" in tags or "btc" in q or "bitcoin" in q
-                is_price  = any(w in q for w in ["above","below","higher","lower","up","down","price"])
-                if is_crypto and is_price:
+                tag_names = " ".join(tags)
+
+                # Aceita qualquer mercado com keyword crypto
+                is_relevant = any(k in q or k in tag_names for k in crypto_keywords)
+
+                if is_relevant:
                     token_ids = m.get("clobTokenIds")
                     if token_ids:
                         if isinstance(token_ids, str):
                             try: token_ids = json.loads(token_ids)
                             except: continue
-                        btc.append({
-                            "id":          m.get("id"),
-                            "question":    m.get("question"),
-                            "conditionId": m.get("conditionId"),
-                            "yes_token":   token_ids[0] if len(token_ids)>0 else None,
-                            "no_token":    token_ids[1] if len(token_ids)>1 else None,
-                            "end_date":    m.get("endDate"),
-                            "volume":      float(m.get("volume") or 0),
-                        })
+                        if len(token_ids) >= 2:
+                            vol = float(m.get("volume") or 0)
+                            btc.append({
+                                "id":          m.get("id"),
+                                "question":    m.get("question"),
+                                "conditionId": m.get("conditionId"),
+                                "yes_token":   token_ids[0],
+                                "no_token":    token_ids[1],
+                                "end_date":    m.get("endDate"),
+                                "volume":      vol,
+                            })
+                            print(f"[PolyScanner] Mercado: {m.get('question','')[:50]}")
+
+            # Se ainda vazio, pega todos com volume > 0
+            if not btc:
+                print("[PolyScanner] Sem crypto, pegando todos com volume...")
+                for m in markets:
+                    token_ids = m.get("clobTokenIds")
+                    vol = float(m.get("volume") or 0)
+                    if token_ids and vol > 1000:
+                        if isinstance(token_ids, str):
+                            try: token_ids = json.loads(token_ids)
+                            except: continue
+                        if len(token_ids) >= 2:
+                            btc.append({
+                                "id":          m.get("id"),
+                                "question":    m.get("question"),
+                                "conditionId": m.get("conditionId"),
+                                "yes_token":   token_ids[0],
+                                "no_token":    token_ids[1],
+                                "end_date":    m.get("endDate"),
+                                "volume":      vol,
+                            })
 
             # Ordena por volume e pega top 10
             btc.sort(key=lambda x: x["volume"], reverse=True)
