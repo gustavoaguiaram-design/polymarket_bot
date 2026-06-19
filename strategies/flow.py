@@ -84,31 +84,39 @@ class FlowStrategy:
 
         order_momentum = min(delta / 10000, 0.05)  # max 5% de edge por ordem
 
-        # Confirmação com BTC
+        # Confirmação com BTC (opcional — não bloqueia se BTC indisponível)
         btc_mom = self.get_btc_momentum()
         btc_confirms = False
         btc_edge = 0.0
 
         if side == "YES":
-            # Precisamos que BTC esteja subindo para confirmar YES
             if btc_mom > 0.02:
                 btc_confirms = True
                 btc_edge = min(btc_mom * 0.5, 0.03)
+            elif btc_mom == 0.0:
+                # BTC indisponível — não penaliza
+                btc_confirms = True
+                btc_edge = 0.0
             direction = "BUY_YES"
-            entry_price = ask  # compra no ask
+            entry_price = ask
         else:
-            # NO: queremos que BTC esteja caindo
             if btc_mom < -0.02:
                 btc_confirms = True
                 btc_edge = min(abs(btc_mom) * 0.5, 0.03)
+            elif btc_mom == 0.0:
+                btc_confirms = True
+                btc_edge = 0.0
             direction = "BUY_NO"
-            entry_price = 1 - bid  # compra NO no preço equivalente
+            entry_price = 1 - bid
 
         # Edge total
         spread_edge = spread * 0.3  # capturamos parte do spread
         total_edge  = order_momentum + spread_edge + btc_edge
 
-        if total_edge < MIN_EDGE:
+        # Afroxa critério se BTC não confirmou — usa só o fluxo de ordens
+        effective_min_edge = MIN_EDGE if btc_confirms else MIN_EDGE * 0.5
+
+        if total_edge < effective_min_edge:
             return None
 
         # Take profit: quando mercado ajustar o preço

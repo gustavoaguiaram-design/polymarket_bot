@@ -20,7 +20,7 @@ BINANCE_API = "https://fapi.binance.com"
 
 # ─── Estratégia ────────────────────────────────────────────
 MIN_ORDER_SIZE_USD = 500.0
-MIN_EDGE           = 0.03
+MIN_EDGE           = 0.01
 BET_SIZE_USD       = 2.0            # $2 por trade
 MAX_POSITIONS      = 20             # 20 simultâneos
 MIN_ODDS           = 0.30
